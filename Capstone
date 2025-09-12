@@ -1,0 +1,105 @@
+# This script demonstrates how to create a document embedding system
+# for offline use. It uses LangChain, ChromaDB, and a local embedding model
+# from the Hugging Face `sentence-transformers` library.
+#
+# Since connecting to OpenAI's API requires an internet connection, this
+# example shows a robust alternative for when you have no internet access.
+
+from langchain_community.document_loaders import TextLoader
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import CharacterTextSplitter
+import os
+import shutil
+
+# --- Configuration and Setup ---
+
+# Define the directory for the ChromaDB vector store.
+# This is where the persistent database will be saved.
+CHROMA_DB_DIRECTORY = "./chroma_db"
+
+# Define the name of the local model to be used for creating embeddings.
+# This model must be downloaded to your machine beforehand.
+# You can find many options on the Hugging Face Hub (e.g., all-MiniLM-L6-v2).
+# For this example, we'll use a commonly used small model.
+# NOTE: The first time you run this, you will need an internet connection
+# to download the model, but all subsequent runs will work offline.
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+# --- Main Function to Run the Process ---
+
+def create_local_vector_store():
+    """
+    Loads a document, splits it into chunks, creates embeddings using a local
+    Hugging Face model, and stores them in a local ChromaDB vector store.
+    """
+    try:
+        # Step 1: Clean up any previous database to start fresh.
+        if os.path.exists(CHROMA_DB_DIRECTORY):
+            print("Cleaning up previous ChromaDB directory...")
+            shutil.rmtree(CHROMA_DB_DIRECTORY)
+        
+        # Step 2: Create a dummy text file to act as the source document.
+        # In a real-world scenario, you would load your own documents here.
+        document_path = "sample_document.txt"
+        with open(document_path, "w") as f:
+            f.write("This is the first sentence of a sample document. " * 5 + "\n")
+            f.write("This is a second paragraph. It contains more information about the topic. " * 5 + "\n")
+            f.write("A final section to demonstrate the text splitter. " * 5 + "\n")
+
+        # Step 3: Load the document using LangChain's TextLoader.
+        print(f"Loading document from '{document_path}'...")
+        loader = TextLoader(document_path)
+        documents = loader.load()
+
+        # Step 4: Split the documents into smaller, manageable chunks.
+        # This is a crucial step for effective RAG (Retrieval-Augmented Generation).
+        print("Splitting document into chunks...")
+        text_splitter = CharacterTextSplitter(chunk_size=100, chunk_overlap=0)
+        docs = text_splitter.split_documents(documents)
+
+        # Step 5: Initialize the local embedding model from Hugging Face.
+        # The `model_kwargs` and `encode_kwargs` are optional but good practice.
+        print(f"Initializing local embedding model: '{MODEL_NAME}'...")
+        embeddings = HuggingFaceEmbeddings(
+            model_name=MODEL_NAME,
+            model_kwargs={'device': 'cpu'},  # Use 'cuda' if you have a GPU
+            encode_kwargs={'normalize_embeddings': True}
+        )
+
+        # Step 6: Create the ChromaDB vector store.
+        # The `persist_directory` ensures the data is saved to disk.
+        print("Creating and populating ChromaDB vector store...")
+        vectorstore = Chroma.from_documents(
+            documents=docs,
+            embedding=embeddings,
+            persist_directory=CHROMA_DB_DIRECTORY
+        )
+
+        # Step 7: Perform a test query to verify everything is working.
+        print("\nVector store successfully created and populated.")
+        query = "What is the topic of this document?"
+        print(f"Running a similarity search with the query: '{query}'")
+        
+        results = vectorstore.similarity_search(query)
+        
+        print("\n--- Search Results ---")
+        for i, doc in enumerate(results):
+            print(f"Result {i+1}:")
+            print(f"Content: {doc.page_content[:100]}...")
+            print("-" * 20)
+
+        # Step 8: Clean up the dummy document file.
+        os.remove(document_path)
+
+        print("\nProcess complete. The vector store is now ready for offline use.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Add additional cleanup in case of an error
+        if os.path.exists(document_path):
+            os.remove(document_path)
+
+# --- Execute the script ---
+if __name__ == "__main__":
+    create_local_vector_store()
