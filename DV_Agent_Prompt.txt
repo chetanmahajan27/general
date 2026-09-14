@@ -1,0 +1,2195 @@
+Absolutely. If you're planning to use an AI coding tool to build this, I’d use a **single master prompt** that defines the architecture, functional requirements, security model, UI, packaging, and testing standards.
+
+Below is a production-oriented prompt you can paste into a coding agent such as Cursor, Claude Code, Codex, or another development environment.
+
+# Build a Professional Cross-Platform Data Validation Framework
+
+## 1. Objective
+
+Build a **professional-grade, enterprise-ready Data Validation Framework** as a desktop application that runs on both:
+
+* Windows 10/11
+* macOS
+
+The application must allow users to configure, execute, monitor, and analyze data validation/comparison jobs between two databases.
+
+The framework must support:
+
+### Source/Target Database Types
+
+1. MySQL
+2. PostgreSQL
+3. Oracle
+4. Snowflake
+
+A validation can compare any supported database against any other supported database.
+
+Examples:
+
+* MySQL → PostgreSQL
+* Oracle → Snowflake
+* PostgreSQL → Snowflake
+* Snowflake → Snowflake
+* Oracle → Oracle
+* MySQL → MySQL
+
+The application must be designed so that additional database types can be added later without redesigning the framework.
+
+---
+
+# 2. Critical Design Principles
+
+The application must follow these principles:
+
+### Configuration-driven
+
+**No business logic, database connection details, validation rules, mappings, thresholds, SQL queries, or execution parameters should be hardcoded.**
+
+Everything possible must be externalized into:
+
+* YAML configuration files
+* JSON configuration files where appropriate
+* Environment variables
+* Secure credential storage
+
+YAML should be the primary configuration format.
+
+---
+
+### No Administrator Privileges
+
+The application must:
+
+* Install without Windows Administrator privileges.
+* Run without Administrator privileges.
+* Never require `sudo` on macOS.
+* Never require elevated privileges on Windows.
+* Store application configuration in the user's profile directory.
+* Store logs/results in the user's profile/application-data directory.
+* Avoid writing to protected directories such as:
+
+  * `C:\Program Files`
+  * `C:\Windows`
+  * `/Applications` when elevated installation is required
+  * `/System`
+  * `/Library` where elevated permissions are required.
+
+Prefer per-user installation.
+
+---
+
+### Cross-platform
+
+The application must provide the same functionality on:
+
+* Windows
+* macOS
+
+Use a technology stack that supports both platforms well.
+
+Prefer:
+
+**Python backend + PySide6 desktop UI**
+
+unless there is a strong architectural reason to use another stack.
+
+The application must be packaged as standalone desktop applications so end users do not need to install:
+
+* Python
+* Java
+* Node.js
+* database clients
+* additional runtimes
+
+---
+
+# 3. Recommended Technology Stack
+
+Use the following stack unless there is a compelling technical reason to change it.
+
+## Backend
+
+Python 3.12+
+
+Recommended libraries:
+
+* PySide6
+* SQLAlchemy
+* pandas
+* PyYAML
+* cryptography
+* snowflake-connector-python
+* oracledb
+* psycopg
+* mysql-connector-python
+* pydantic
+* keyring
+* pytest
+* pytest-qt
+* structlog or standard logging
+* openpyxl
+* pyarrow where useful
+
+Use type hints throughout the codebase.
+
+Use `ruff` for linting.
+
+Use `mypy` or an equivalent static type checker.
+
+Use `pytest` for testing.
+
+---
+
+# 4. Application Architecture
+
+Use a clean layered architecture.
+
+Suggested structure:
+
+```text
+data-validation-framework/
+│
+├── app/
+│   ├── main.py
+│   │
+│   ├── ui/
+│   │   ├── main_window.py
+│   │   ├── dashboard.py
+│   │   ├── connection_manager.py
+│   │   ├── validation_designer.py
+│   │   ├── execution_monitor.py
+│   │   ├── results_viewer.py
+│   │   ├── configuration_editor.py
+│   │   └── widgets/
+│   │
+│   ├── core/
+│   │   ├── validation_engine.py
+│   │   ├── comparison_engine.py
+│   │   ├── profiling_engine.py
+│   │   ├── reconciliation_engine.py
+│   │   ├── execution_engine.py
+│   │   └── rule_engine.py
+│   │
+│   ├── database/
+│   │   ├── base.py
+│   │   ├── factory.py
+│   │   ├── mysql.py
+│   │   ├── postgres.py
+│   │   ├── oracle.py
+│   │   └── snowflake.py
+│   │
+│   ├── config/
+│   │   ├── loader.py
+│   │   ├── validator.py
+│   │   └── models.py
+│   │
+│   ├── security/
+│   │   ├── credentials.py
+│   │   ├── keyring_manager.py
+│   │   └── encryption.py
+│   │
+│   ├── reporting/
+│   │   ├── report_generator.py
+│   │   ├── excel_report.py
+│   │   ├── csv_report.py
+│   │   └── html_report.py
+│   │
+│   └── utils/
+│
+├── config/
+│   ├── application.yaml
+│   ├── connections.yaml
+│   ├── validations.yaml
+│   ├── rules.yaml
+│   └── environments/
+│
+├── templates/
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── database/
+│   └── ui/
+│
+├── docs/
+│
+├── scripts/
+│
+├── packaging/
+│   ├── windows/
+│   └── macos/
+│
+└── README.md
+```
+
+Keep UI, business logic, database connectivity, configuration, security, and reporting separated.
+
+---
+
+# 5. Database Abstraction Layer
+
+Create a common database interface.
+
+Example conceptual interface:
+
+```python
+class DatabaseAdapter(ABC):
+
+    def connect(self):
+        ...
+
+    def disconnect(self):
+        ...
+
+    def test_connection(self):
+        ...
+
+    def execute_query(self, sql, parameters=None):
+        ...
+
+    def execute_scalar(self, sql, parameters=None):
+        ...
+
+    def fetch_dataframe(self, sql, parameters=None):
+        ...
+
+    def get_tables(self, schema=None):
+        ...
+
+    def get_columns(self, table, schema=None):
+        ...
+
+    def get_primary_key(self, table, schema=None):
+        ...
+
+    def get_row_count(self, table, schema=None):
+        ...
+```
+
+All database-specific implementations must inherit from this abstraction.
+
+The validation engine must never directly depend on a specific database implementation.
+
+---
+
+# 6. Database Support
+
+## MySQL
+
+Support:
+
+* hostname
+* port
+* database
+* username
+* password
+* SSL
+* connection timeout
+* schema/database selection
+
+---
+
+## PostgreSQL
+
+Support:
+
+* hostname
+* port
+* database
+* username
+* password
+* SSL
+* schema
+* connection timeout
+
+---
+
+## Oracle
+
+Support:
+
+* hostname
+* port
+* service name
+* SID where applicable
+* username
+* password
+* wallet configuration where applicable
+* SSL/TLS
+* connection timeout
+
+Prefer the modern `oracledb` Python driver.
+
+---
+
+# 7. Snowflake
+
+Snowflake requires special treatment.
+
+Support:
+
+* account
+* user
+* warehouse
+* database
+* schema
+* role
+* authenticator
+* private key authentication
+
+The application MUST support:
+
+### RSA Key Pair Authentication
+
+Users must be able to configure:
+
+```yaml
+authentication:
+  method: rsa
+  private_key_file: "~/.dvf/snowflake/private_key.p8"
+  private_key_passphrase_keyring: "snowflake_private_key_passphrase"
+```
+
+Do NOT store the private key passphrase in plaintext YAML.
+
+The private key itself should preferably remain in a user-controlled secure location.
+
+Support encrypted PKCS8 private keys.
+
+Use the Python `cryptography` library to load/decrypt keys when required.
+
+Use the OS credential manager through Python `keyring` for:
+
+* Snowflake private key passphrases
+* database passwords
+* other secrets
+
+Support:
+
+* Windows Credential Manager
+* macOS Keychain
+
+Never print passwords, private keys, tokens, or connection strings containing credentials into logs.
+
+---
+
+# 8. Configuration Architecture
+
+Everything must be configurable.
+
+Create:
+
+```text
+config/
+    application.yaml
+    connections.yaml
+    validations.yaml
+    rules.yaml
+```
+
+Example:
+
+```yaml
+application:
+  name: Data Validation Framework
+  version: 1.0.0
+
+execution:
+  max_parallel_jobs: 4
+  query_timeout_seconds: 1800
+  batch_size: 10000
+  retry_count: 3
+  retry_delay_seconds: 5
+
+logging:
+  level: INFO
+  directory: logs
+  retention_days: 30
+
+reporting:
+  output_directory: reports
+  formats:
+    - html
+    - excel
+    - csv
+```
+
+---
+
+# 9. Connection Configuration
+
+Example:
+
+```yaml
+connections:
+
+  source_oracle:
+    type: oracle
+
+    host: oracle.company.com
+    port: 1521
+    service_name: PROD
+
+    username: validation_user
+
+    authentication:
+      method: password
+      password_keyring: oracle_validation_password
+
+    ssl:
+      enabled: true
+
+  target_snowflake:
+    type: snowflake
+
+    account: company-prod
+    user: validation_user
+    warehouse: VALIDATION_WH
+    database: ANALYTICS
+    schema: PUBLIC
+    role: VALIDATION_ROLE
+
+    authentication:
+      method: rsa
+      private_key_file: "~/.dvf/snowflake/private_key.p8"
+      private_key_passphrase_keyring: snowflake_key_passphrase
+```
+
+Passwords must NEVER be stored directly in this file.
+
+---
+
+# 10. Validation Configuration
+
+Example:
+
+```yaml
+validations:
+
+  customer_validation:
+
+    source:
+      connection: source_oracle
+      schema: CUSTOMER
+      table: CUSTOMER
+
+    target:
+      connection: target_snowflake
+      schema: CUSTOMER
+      table: CUSTOMER
+
+    primary_key:
+      columns:
+        - CUSTOMER_ID
+
+    columns:
+
+      - source: CUSTOMER_ID
+        target: CUSTOMER_ID
+        validation: exact
+
+      - source: FIRST_NAME
+        target: FIRST_NAME
+        validation: exact
+
+      - source: BALANCE
+        target: BALANCE
+        validation: numeric_tolerance
+        tolerance: 0.01
+
+      - source: CREATED_DATE
+        target: CREATED_DATE
+        validation: datetime
+        tolerance_seconds: 2
+
+    options:
+      case_sensitive: false
+      trim_strings: true
+      null_equals_null: true
+```
+
+---
+
+# 11. Validation Types
+
+Implement at minimum:
+
+### Row Count Validation
+
+Compare:
+
+```text
+SOURCE COUNT
+TARGET COUNT
+DIFFERENCE
+MATCH / FAIL
+```
+
+---
+
+### Schema Validation
+
+Compare:
+
+* table existence
+* column existence
+* column count
+* column names
+* column order
+* data types
+* precision
+* scale
+* nullable property
+* primary keys
+
+---
+
+### Column-Level Validation
+
+Support:
+
+* exact equality
+* case-insensitive equality
+* trimmed equality
+* numeric tolerance
+* percentage tolerance
+* date tolerance
+* datetime tolerance
+* null equivalence
+* regex validation
+* range validation
+
+---
+
+# 12. Hash-Based Validation
+
+Implement efficient hash-based comparison.
+
+Allow configuration such as:
+
+```yaml
+validation:
+  method: hash
+  hash_algorithm: SHA256
+```
+
+For large tables, avoid unnecessarily transferring the entire dataset between databases.
+
+Generate database-specific hash expressions where possible.
+
+For example:
+
+```text
+HASH(primary_key + normalized_columns)
+```
+
+Compare aggregated hashes.
+
+Support:
+
+* row-level hashes
+* partition-level hashes
+* full-table hashes
+
+The framework should automatically recommend or select the most efficient strategy based on table size and configuration.
+
+---
+
+# 13. Primary-Key Based Comparison
+
+Support configurable keys:
+
+```yaml
+primary_key:
+  columns:
+    - CUSTOMER_ID
+```
+
+Composite keys:
+
+```yaml
+primary_key:
+  columns:
+    - CUSTOMER_ID
+    - ACCOUNT_ID
+```
+
+Detect:
+
+* missing source rows
+* missing target rows
+* duplicate keys
+* mismatched records
+* matching records
+
+---
+
+# 14. Data Comparison
+
+For mismatched records provide:
+
+```text
+KEY
+COLUMN
+SOURCE VALUE
+TARGET VALUE
+DIFFERENCE
+STATUS
+```
+
+Example:
+
+```text
+Customer ID: 10025
+
+BALANCE
+Source: 15250.00
+Target: 15249.98
+Difference: 0.02
+Status: FAIL
+```
+
+Allow configurable maximum mismatch records to display.
+
+Example:
+
+```yaml
+reporting:
+  max_mismatch_records: 10000
+```
+
+---
+
+# 15. Large Dataset Support
+
+The framework must be designed for millions/billions of rows.
+
+Do NOT load entire tables into memory.
+
+Implement:
+
+* streaming
+* batching
+* chunk processing
+* server-side aggregation
+* partition-based validation
+* hash-based validation
+* configurable fetch size
+* pagination where appropriate
+
+Example:
+
+```yaml
+execution:
+  fetch_size: 10000
+  batch_size: 10000
+  max_memory_mb: 2048
+```
+
+---
+
+# 16. Intelligent Validation Strategy
+
+Implement a validation strategy engine.
+
+Possible modes:
+
+```yaml
+strategy:
+  mode: auto
+```
+
+The engine should select an appropriate method based on:
+
+* estimated row count
+* table size
+* primary key availability
+* database type
+* column count
+* data types
+* configured thresholds
+
+Possible strategies:
+
+```text
+ROW_COUNT
+SCHEMA
+HASH
+FULL_DATA_COMPARE
+SAMPLE
+PARTITION_HASH
+```
+
+Allow users to override the automatic strategy.
+
+---
+
+# 17. Sampling
+
+Support configurable sampling.
+
+Example:
+
+```yaml
+sampling:
+  enabled: true
+  percentage: 5
+  random_seed: 12345
+```
+
+Support:
+
+* percentage-based sampling
+* row-count sampling
+* deterministic sampling
+* primary-key range sampling
+
+---
+
+# 18. SQL Configuration
+
+Users must be able to define custom SQL.
+
+Example:
+
+```yaml
+custom_query:
+
+  source: |
+    SELECT
+        CUSTOMER_ID,
+        BALANCE
+    FROM CUSTOMER
+    WHERE STATUS = 'ACTIVE'
+
+  target: |
+    SELECT
+        CUSTOMER_ID,
+        BALANCE
+    FROM CUSTOMER
+    WHERE STATUS = 'ACTIVE'
+```
+
+Never hardcode business SQL into Python.
+
+---
+
+# 19. Transformation Validation
+
+Support transformation rules.
+
+Example:
+
+```yaml
+transformations:
+
+  - name: trim
+    column: CUSTOMER_NAME
+
+  - name: uppercase
+    column: COUNTRY_CODE
+
+  - name: round
+    column: BALANCE
+    decimals: 2
+
+  - name: date_format
+    column: CREATED_DATE
+    format: YYYY-MM-DD
+```
+
+Support configurable transformations including:
+
+* trim
+* upper
+* lower
+* null replacement
+* rounding
+* date formatting
+* numeric conversion
+* concatenation
+* substring
+* regex replacement
+
+Design this so new transformations can be implemented as plugins.
+
+---
+
+# 20. Validation Rules Engine
+
+Create a rule engine.
+
+Example:
+
+```yaml
+rules:
+
+  balance_check:
+    type: numeric_tolerance
+    tolerance: 0.01
+
+  email_check:
+    type: regex
+    pattern: "^[^@]+@[^@]+\\.[^@]+$"
+
+  status_check:
+    type: allowed_values
+    values:
+      - ACTIVE
+      - INACTIVE
+```
+
+Rules should be reusable across multiple validations.
+
+---
+
+# 21. UI Requirements
+
+Create a professional desktop GUI.
+
+Main navigation:
+
+```text
+Dashboard
+Connections
+Validation Jobs
+Validation Designer
+Execution Monitor
+Results
+Reports
+Configuration
+Logs
+About
+```
+
+---
+
+# 22. Dashboard
+
+Display:
+
+```text
+Total Validations
+Passed
+Failed
+Running
+Queued
+Success Rate
+Last Execution
+Average Execution Time
+```
+
+Add charts for:
+
+* pass/fail trend
+* validation execution time
+* row mismatch counts
+
+---
+
+# 23. Connection Manager
+
+Provide a GUI to create/edit/delete connections.
+
+Fields should dynamically change depending on database type.
+
+Example:
+
+```text
+Database Type
+Host
+Port
+Database
+Schema
+Username
+Authentication
+SSL
+```
+
+For Snowflake:
+
+```text
+Account
+User
+Warehouse
+Database
+Schema
+Role
+
+Authentication:
+    Password
+    RSA Private Key
+```
+
+Provide:
+
+**Test Connection**
+
+button.
+
+Connection credentials should be stored securely using OS credential storage.
+
+---
+
+# 24. Validation Designer
+
+Provide a wizard:
+
+### Step 1
+
+Select Source Connection.
+
+### Step 2
+
+Select Target Connection.
+
+### Step 3
+
+Select Source Table/Query.
+
+### Step 4
+
+Select Target Table/Query.
+
+### Step 5
+
+Map columns.
+
+### Step 6
+
+Select primary keys.
+
+### Step 7
+
+Configure validation rules.
+
+### Step 8
+
+Configure tolerance.
+
+### Step 9
+
+Select validation strategy.
+
+### Step 10
+
+Save configuration.
+
+The UI must generate YAML rather than embedding configuration in the application database.
+
+---
+
+# 25. Execution Monitor
+
+Provide real-time progress.
+
+Display:
+
+```text
+Job: Customer Validation
+
+Status: RUNNING
+
+Rows processed: 4,250,000
+Rows matched: 4,238,210
+Rows mismatched: 11,790
+
+Progress: 72%
+
+Elapsed: 00:14:32
+Estimated remaining: 00:05:41
+```
+
+Support:
+
+* Start
+* Pause where technically possible
+* Cancel
+* Retry
+* Rerun
+
+---
+
+# 26. Results Viewer
+
+Provide filtering by:
+
+* validation
+* execution
+* table
+* column
+* status
+* severity
+
+Display:
+
+```text
+PASS
+FAIL
+WARNING
+ERROR
+```
+
+Allow users to drill down from:
+
+```text
+Job
+ ↓
+Table
+ ↓
+Record
+ ↓
+Column
+```
+
+---
+
+# 27. Reports
+
+Generate:
+
+### HTML
+
+Professional interactive report.
+
+### Excel
+
+Multiple worksheets:
+
+```text
+Summary
+Schema Validation
+Row Count
+Column Validation
+Missing Records
+Extra Records
+Mismatches
+Execution Details
+```
+
+### CSV
+
+For detailed mismatch data.
+
+---
+
+# 28. Report Example
+
+Summary:
+
+```text
+Validation: CUSTOMER_VALIDATION
+
+Source: Oracle PROD
+Target: Snowflake ANALYTICS
+
+Execution:
+14-Sep-2026 10:15
+
+Status: FAILED
+
+Rows:
+Source: 10,000,000
+Target: 9,998,742
+
+Missing: 1,258
+Extra: 0
+
+Column mismatches: 4,812
+
+Overall Match Percentage: 99.95%
+```
+
+---
+
+# 29. Logging
+
+Implement structured logging.
+
+Logs should include:
+
+```text
+timestamp
+job_id
+validation_id
+database
+operation
+duration
+status
+error_code
+```
+
+Never log:
+
+* passwords
+* private keys
+* tokens
+* secrets
+* full connection strings containing credentials
+
+Provide configurable logging:
+
+```yaml
+logging:
+  level: INFO
+  console: true
+  file: true
+  retention_days: 30
+```
+
+---
+
+# 30. Error Handling
+
+Errors must be user-friendly.
+
+Example:
+
+Instead of:
+
+```text
+ORA-12170
+```
+
+display:
+
+```text
+Connection timeout
+
+Unable to connect to Oracle database within 30 seconds.
+
+Possible causes:
+- Incorrect hostname
+- Network connectivity
+- Firewall
+- Database unavailable
+- Incorrect port
+```
+
+Maintain technical details in logs.
+
+---
+
+# 31. Security
+
+Security is critical.
+
+Implement:
+
+* OS credential manager
+* encrypted secrets
+* TLS/SSL where supported
+* certificate validation
+* secure temporary files
+* no plaintext credentials
+* no credentials in logs
+* no credentials in YAML
+* secure private-key handling
+
+Snowflake RSA private keys must never be copied unnecessarily.
+
+Do not upload credentials anywhere.
+
+All processing should occur locally unless explicitly configured otherwise.
+
+---
+
+# 32. Proxy Support
+
+Support enterprise proxies.
+
+Example:
+
+```yaml
+network:
+  proxy:
+    enabled: false
+    host:
+    port:
+    username_keyring:
+    password_keyring:
+```
+
+---
+
+# 33. Environment Configuration
+
+Support:
+
+```text
+DEV
+TEST
+UAT
+PROD
+```
+
+Example:
+
+```text
+config/
+    environments/
+        dev.yaml
+        test.yaml
+        uat.yaml
+        prod.yaml
+```
+
+Allow switching environment from the UI.
+
+Prevent accidental PROD execution through configurable confirmation.
+
+Example:
+
+```yaml
+environment:
+  name: PROD
+  require_execution_confirmation: true
+```
+
+---
+
+# 34. Configuration Validation
+
+Validate YAML before execution.
+
+Detect:
+
+* missing fields
+* invalid database type
+* invalid authentication method
+* invalid tolerance
+* invalid SQL
+* duplicate validation IDs
+* missing primary keys
+* invalid column mapping
+
+Provide meaningful error messages.
+
+---
+
+# 35. Configuration Versioning
+
+Every validation configuration should support:
+
+```yaml
+metadata:
+  validation_id: customer_validation
+  version: 3
+  created_by: user
+  created_date: 2026-09-14
+  description: Customer data validation
+```
+
+The application should preserve configuration history where practical.
+
+---
+
+# 36. Import / Export
+
+Users must be able to:
+
+* export configurations
+* import configurations
+* clone validations
+* duplicate jobs
+* export reports
+
+Exported configuration must NOT contain secrets.
+
+---
+
+# 37. CLI Support
+
+Although the primary interface is GUI, also provide an optional CLI.
+
+Example:
+
+```bash
+dvf validate --config config/validations/customer.yaml
+```
+
+Other commands:
+
+```bash
+dvf connections test
+dvf validate list
+dvf validate run customer_validation
+dvf report generate customer_validation
+dvf config validate
+```
+
+The CLI must also work without administrator privileges.
+
+---
+
+# 38. Scheduling
+
+Design the framework so scheduling can be added.
+
+Initially support manual execution.
+
+Architecture should allow:
+
+```text
+One-time execution
+Daily
+Weekly
+Cron-like schedule
+```
+
+Do not require a system-wide Windows service or macOS daemon.
+
+If scheduling is implemented, use per-user scheduling mechanisms.
+
+---
+
+# 39. Concurrency
+
+Support configurable parallel execution.
+
+Example:
+
+```yaml
+execution:
+  max_parallel_jobs: 4
+```
+
+Ensure one database connection is not accidentally shared unsafely across threads.
+
+Use connection pools where appropriate.
+
+---
+
+# 40. Performance Requirements
+
+The framework should be optimized for:
+
+* large tables
+* millions of rows
+* cross-database comparisons
+* minimal memory usage
+* parallel processing
+
+Avoid:
+
+```python
+df = entire_database_table()
+```
+
+unless explicitly requested.
+
+Prefer:
+
+```text
+Database → aggregation/hash → comparison
+```
+
+rather than:
+
+```text
+Database A → entire dataset → Python memory
+Database B → entire dataset → Python memory
+```
+
+---
+
+# 41. Database-Specific SQL Generation
+
+Create a SQL dialect abstraction.
+
+Example:
+
+```python
+class SQLDialect:
+    def quote_identifier(self, identifier):
+        ...
+
+    def hash_expression(self, columns):
+        ...
+
+    def pagination(self, sql, limit, offset):
+        ...
+
+    def row_count(self, table):
+        ...
+```
+
+Implement:
+
+```text
+OracleDialect
+SnowflakeDialect
+PostgresDialect
+MySQLDialect
+```
+
+This is important because SQL functions differ between databases.
+
+---
+
+# 42. Data Type Normalization
+
+Create a canonical data type system.
+
+For example:
+
+```text
+STRING
+INTEGER
+DECIMAL
+FLOAT
+DATE
+DATETIME
+BOOLEAN
+BINARY
+JSON
+```
+
+Map database-native types into canonical types.
+
+Examples:
+
+```text
+Oracle NUMBER → DECIMAL
+Snowflake NUMBER → DECIMAL
+Postgres NUMERIC → DECIMAL
+MySQL DECIMAL → DECIMAL
+```
+
+Allow configurable type equivalence.
+
+---
+
+# 43. NULL Handling
+
+Support:
+
+```yaml
+comparison:
+  null_equals_null: true
+```
+
+Possible behavior:
+
+```text
+NULL vs NULL → MATCH
+NULL vs value → FAIL
+value vs NULL → FAIL
+```
+
+Allow customization.
+
+---
+
+# 44. Floating Point Handling
+
+Support:
+
+```yaml
+numeric_comparison:
+  absolute_tolerance: 0.01
+  relative_tolerance: 0.0001
+```
+
+Comparison:
+
+```text
+abs(source-target) <= absolute tolerance
+```
+
+or:
+
+```text
+abs(source-target)/abs(source) <= relative tolerance
+```
+
+---
+
+# 45. Date/Time Handling
+
+Support configurable timezone normalization.
+
+Example:
+
+```yaml
+datetime:
+  normalize_timezone: UTC
+  tolerance_seconds: 1
+```
+
+Handle:
+
+* timezone-aware timestamps
+* timezone-naive timestamps
+* Oracle DATE
+* Oracle TIMESTAMP
+* Snowflake TIMESTAMP_NTZ
+* Snowflake TIMESTAMP_TZ
+* PostgreSQL timestamp
+* MySQL datetime
+
+---
+
+# 46. Data Masking
+
+Results must support masking sensitive fields.
+
+Example:
+
+```yaml
+masking:
+
+  CUSTOMER_EMAIL:
+    type: partial
+
+  PHONE_NUMBER:
+    type: partial
+
+  SSN:
+    type: hash
+```
+
+Never expose sensitive production data unnecessarily in reports.
+
+---
+
+# 47. Audit Trail
+
+Maintain local audit information for:
+
+* validation created
+* validation modified
+* validation executed
+* validation deleted
+* configuration imported
+* configuration exported
+
+Include:
+
+```text
+timestamp
+user
+operation
+validation
+configuration version
+```
+
+---
+
+# 48. User Experience
+
+The application should feel like a professional enterprise tool.
+
+Use:
+
+* clean navigation
+* consistent typography
+* tables with sorting/filtering
+* progress indicators
+* contextual error messages
+* keyboard shortcuts
+* confirmation dialogs for destructive actions
+* responsive UI
+
+Long-running database operations MUST NOT freeze the UI.
+
+Use background workers/tasks.
+
+---
+
+# 49. Packaging
+
+Create installers for:
+
+## Windows
+
+Provide:
+
+```text
+DVF-Setup-x64.exe
+```
+
+Installation must support:
+
+```text
+Install for current user
+```
+
+and must NOT require Administrator privileges.
+
+Prefer a per-user installation directory such as:
+
+```text
+%LOCALAPPDATA%\DataValidationFramework\
+```
+
+Do not require:
+
+```text
+C:\Program Files\
+```
+
+---
+
+# 50. macOS
+
+Provide:
+
+```text
+DataValidationFramework.dmg
+```
+
+Application should run from the user's Applications directory without requiring root privileges.
+
+If notarization/signing is implemented, document the process.
+
+Support both:
+
+```text
+Apple Silicon
+Intel
+```
+
+where practical.
+
+Prefer universal binaries if feasible.
+
+---
+
+# 51. No Database Server Dependency
+
+The application itself should NOT require:
+
+* PostgreSQL server
+* MySQL server
+* Oracle client installation
+* SnowSQL installation
+
+Use Python database drivers.
+
+The only external systems required should be the databases being validated.
+
+---
+
+# 52. Offline Capability
+
+The UI and configuration management should work offline.
+
+Only actual database validation requires network connectivity.
+
+Do not require an internet connection for:
+
+* application startup
+* configuration editing
+* viewing previous reports
+* viewing logs
+
+---
+
+# 53. Application Data Directory
+
+Use platform-appropriate user directories.
+
+Windows:
+
+```text
+%LOCALAPPDATA%\DataValidationFramework\
+```
+
+macOS:
+
+```text
+~/Library/Application Support/DataValidationFramework/
+```
+
+Structure:
+
+```text
+config/
+logs/
+reports/
+cache/
+history/
+```
+
+Never store application data in the installation directory.
+
+---
+
+# 54. Testing
+
+Create comprehensive tests.
+
+## Unit Tests
+
+Test:
+
+* configuration parsing
+* validation rules
+* numeric tolerance
+* date tolerance
+* NULL handling
+* transformations
+* hashing
+* SQL generation
+* type normalization
+* report generation
+
+## Integration Tests
+
+Test:
+
+```text
+MySQL → PostgreSQL
+PostgreSQL → Snowflake
+Oracle → Snowflake
+Snowflake → Snowflake
+```
+
+Use Docker/Testcontainers where practical for open-source databases.
+
+For Snowflake/Oracle, provide optional integration tests requiring environment variables.
+
+---
+
+# 55. Mock Database Tests
+
+The framework must support mocked database adapters.
+
+Tests should not require live production databases.
+
+Example:
+
+```python
+MockDatabaseAdapter
+```
+
+---
+
+# 56. Security Testing
+
+Test that:
+
+* passwords never appear in logs
+* private keys never appear in logs
+* secrets are not exported
+* YAML exports contain no credentials
+* temporary files are securely handled
+
+---
+
+# 57. Code Quality
+
+Use:
+
+```text
+PEP8
+Type hints
+Docstrings
+SOLID principles
+Dependency injection
+Design patterns where appropriate
+```
+
+Avoid giant classes.
+
+Avoid global variables.
+
+Avoid hardcoded configuration.
+
+Avoid database-specific logic in the validation engine.
+
+---
+
+# 58. Extensibility
+
+Adding a new database should require implementing a new adapter such as:
+
+```text
+database/
+    sqlserver.py
+```
+
+without changing the validation engine.
+
+Similarly, adding a validation rule should require adding a new rule implementation without modifying existing validation logic.
+
+Use registries/factory patterns.
+
+---
+
+# 59. Plugin Architecture
+
+Design optional extension points for:
+
+```text
+Database adapters
+Validation rules
+Transformations
+Report formats
+Authentication providers
+```
+
+Example:
+
+```python
+DatabaseAdapterRegistry.register(
+    "mysql",
+    MySQLAdapter
+)
+```
+
+---
+
+# 60. Configuration Example
+
+Create a complete working example:
+
+```yaml
+metadata:
+  validation_id: customer_validation
+  version: 1
+
+source:
+  connection: oracle_prod
+  query: |
+    SELECT
+        CUSTOMER_ID,
+        CUSTOMER_NAME,
+        BALANCE,
+        CREATED_DATE
+    FROM CUSTOMER
+    WHERE STATUS = 'ACTIVE'
+
+target:
+  connection: snowflake_prod
+  query: |
+    SELECT
+        CUSTOMER_ID,
+        CUSTOMER_NAME,
+        BALANCE,
+        CREATED_DATE
+    FROM CUSTOMER
+    WHERE STATUS = 'ACTIVE'
+
+key:
+  columns:
+    - CUSTOMER_ID
+
+columns:
+
+  CUSTOMER_NAME:
+    validation: trimmed_case_insensitive
+
+  BALANCE:
+    validation: numeric_tolerance
+    absolute_tolerance: 0.01
+
+  CREATED_DATE:
+    validation: datetime
+    tolerance_seconds: 2
+
+strategy:
+  mode: auto
+
+comparison:
+  null_equals_null: true
+  trim_strings: true
+
+reporting:
+  formats:
+    - html
+    - excel
+    - csv
+```
+
+---
+
+# 61. Deliverables
+
+Build the complete application, not just a prototype.
+
+Deliver:
+
+1. Complete source code
+2. Windows build configuration
+3. macOS build configuration
+4. Windows installer
+5. macOS DMG
+6. Sample YAML configurations
+7. Sample validation jobs
+8. Unit tests
+9. Integration tests
+10. Documentation
+11. User guide
+12. Developer guide
+13. Security documentation
+14. Configuration reference
+15. CLI documentation
+16. Troubleshooting guide
+
+---
+
+# 62. Documentation
+
+Create:
+
+```text
+README.md
+docs/
+    architecture.md
+    installation.md
+    user-guide.md
+    configuration.md
+    database-connections.md
+    snowflake-rsa.md
+    validation-rules.md
+    reporting.md
+    security.md
+    troubleshooting.md
+    developer-guide.md
+```
+
+The documentation must explain how a new developer can add:
+
+* a database adapter
+* a validation rule
+* a transformation
+* a report format
+
+---
+
+# 63. Development Methodology
+
+Do NOT attempt to build everything in one uncontrolled implementation.
+
+Build in phases.
+
+## Phase 1
+
+Create:
+
+* project structure
+* configuration system
+* database abstraction
+* MySQL adapter
+* PostgreSQL adapter
+* Oracle adapter
+* Snowflake adapter
+* secure credential management
+
+## Phase 2
+
+Implement:
+
+* row count comparison
+* schema comparison
+* primary-key comparison
+* column comparison
+* tolerance rules
+* transformations
+
+## Phase 3
+
+Implement:
+
+* hash validation
+* large dataset processing
+* sampling
+* intelligent strategy selection
+
+## Phase 4
+
+Implement GUI:
+
+* dashboard
+* connections
+* validation designer
+* execution monitor
+* results viewer
+* configuration editor
+
+## Phase 5
+
+Implement:
+
+* reports
+* audit
+* logging
+* CLI
+
+## Phase 6
+
+Implement:
+
+* Windows packaging
+* macOS packaging
+* installers
+* code signing where applicable
+
+## Phase 7
+
+Perform:
+
+* security testing
+* performance testing
+* usability testing
+* cross-platform testing
+
+---
+
+# 64. Important Implementation Rules
+
+Do NOT:
+
+* hardcode credentials
+* hardcode database names
+* hardcode schemas
+* hardcode table names
+* hardcode SQL
+* hardcode validation rules
+* store passwords in YAML
+* store private-key passphrases in YAML
+* require administrator privileges
+* require system-wide Python installation
+* require system-wide database clients
+* freeze the UI during execution
+* load huge datasets entirely into RAM
+* put database-specific code in the core validation engine
+
+---
+
+# 65. Acceptance Criteria
+
+The project is considered complete only when the following workflow works:
+
+1. Install the application on a standard Windows user account without Administrator privileges.
+
+2. Launch the application.
+
+3. Create an Oracle connection.
+
+4. Create a Snowflake connection using RSA authentication.
+
+5. Test both connections.
+
+6. Create a validation configuration through the GUI.
+
+7. Select source and target tables.
+
+8. Automatically discover columns.
+
+9. Configure primary keys.
+
+10. Configure validation rules.
+
+11. Save the validation to YAML.
+
+12. Execute the validation.
+
+13. Show live progress.
+
+14. Compare millions of rows without exhausting system memory.
+
+15. Identify:
+
+    * missing records
+    * extra records
+    * mismatched records
+    * column-level differences
+
+16. Generate HTML, Excel and CSV reports.
+
+17. Close and reopen the application.
+
+18. Reopen the saved configuration.
+
+19. Run the same validation again.
+
+20. Verify that credentials were never written to YAML or logs.
+
+21. Perform the same workflow on macOS without Administrator/root privileges.
+
+---
+
+# 66. Final Engineering Requirement
+
+Treat this as a **production-grade enterprise data validation product**, not a demonstration project.
+
+Prioritize:
+
+1. Correctness
+2. Security
+3. Data integrity
+4. Performance
+5. Maintainability
+6. Extensibility
+7. Cross-platform compatibility
+8. User experience
+
+Before implementing any major component, explain the architecture and trade-offs briefly.
+
+After each phase:
+
+* run tests
+* fix failures
+* update documentation
+* verify cross-platform compatibility
+* do not proceed with known failing tests
+
+At the end, provide:
+
+```text
+Architecture Summary
+Technology Stack
+Project Structure
+Configuration Guide
+Security Model
+Database Support Matrix
+Validation Capability Matrix
+Performance Characteristics
+Installation Instructions
+Windows Packaging Instructions
+macOS Packaging Instructions
+Testing Results
+Known Limitations
+Future Enhancements
+```
+
+The final system must be usable by a non-technical end user while retaining the flexibility required by professional data engineering teams.
+
+### One important enhancement I'd make
+
+For a **truly professional data-validation product**, I would also make the architecture explicitly support a **"control plane vs execution engine"** model:
+
+```text
+                 ┌──────────────────────────┐
+                 │      Desktop UI          │
+                 │  Windows / macOS         │
+                 └────────────┬─────────────┘
+                              │
+                    YAML Configuration
+                              │
+                 ┌────────────▼─────────────┐
+                 │   Validation Orchestrator│
+                 └────────────┬─────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+    ┌─────▼─────┐       ┌─────▼─────┐       ┌─────▼─────┐
+    │   Rules   │       │ Transform │       │ Strategy  │
+    │   Engine  │       │   Engine  │       │  Engine   │
+    └─────┬─────┘       └─────┬─────┘       └─────┬─────┘
+          │                   │                   │
+          └───────────────────┼───────────────────┘
+                              │
+                    Database Adapter Layer
+                              │
+          ┌──────────┬────────┼────────┬──────────┐
+          │          │        │        │          │
+       MySQL     PostgreSQL  Oracle  Snowflake   ...
+```
+
+That separation will make it much easier later to turn this from a desktop application into an **enterprise data-quality platform with REST APIs, centralized configuration, scheduled execution and CI/CD integration** without rewriting the validation engine.
+
+If you're going to give this prompt to an AI coding agent, I would also recommend asking it to **build the MVP in phases rather than generating the entire codebase in one shot**. That substantially reduces architectural inconsistencies and makes it easier to test the database adapters and validation engine independently.
